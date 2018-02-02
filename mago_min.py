@@ -13,13 +13,17 @@ def mago_min(lmt_inferior, lmt_superior, n, ng, fObjetivo):
     # Serie donde se guarda el mejor valor de fobj de cada generacion, para fines ilustrativos
     best_fobj = pd.Series()
 
+
+    # Lista donde se guardan todos los datos que seran regresados por la funcion
+    datos = list()
+
+
     for i in range(ng):
 
         print('Generacion numero: ', i + 1)
 
         # Evaluar poblacion en fobj
         resultados = evaluarPoblacion(poblacion, fObjetivo)
-        #resultados.sort_index(inplace=True)
 
 
         # Se agrega el mejor individuo de la generacion a best_fobj
@@ -63,15 +67,14 @@ def mago_min(lmt_inferior, lmt_superior, n, ng, fObjetivo):
 
 
         # Poblacion de la siguiente generacion
-        poblacion = []
+        poblacion = list()
 
         if n1 != 0:
             poblacion.extend(grupo_mejores) 
         else:
             # En caso de que n1 sea 0, guarda el mejor individuo para la proxima generacion
             # y resta 1 a n3 o n1 para mantener la poblacion en n individuos
-
-            poblacion.extend(resultados.at[1])
+            poblacion.append(resultados.iat[0])
             if n3 != 0:
                 n3 -= 1
             else:
@@ -83,8 +86,12 @@ def mago_min(lmt_inferior, lmt_superior, n, ng, fObjetivo):
         if n3 != 0:
             poblacion.extend(generarPoblacion(lmt_inferior, lmt_superior, n3))
 
-    
-    return ("\nResultado:\n{} \n\nFuncion objetivo:\n{}\n ".format(resultados.iat[0], fObjetivo(resultados.iat[0]))), best_fobj
+
+    datos.append("\nResultado:\n{} \n\nFuncion objetivo:\n{}\n ".format(resultados.iat[0], resultados.index[0]))
+    datos.append(best_fobj)
+
+
+    return datos
 
 
 def generarPoblacion(limite_inferior, limite_superior, n):
@@ -139,17 +146,18 @@ def competenciaG1(resultados, n1, sn, fobj, lim_inf, lim_sup):
     el original y se agrega a la nueva version
     """
 
-    grupo_mejores = resultados.iloc[:n1] 
-    mejorIndividuo = resultados.iat[0]
-
     lng_pob = len(resultados)
     lng_lim = len(lim_inf)
 
+    grupo_mejores = resultados.iloc[:n1] 
+    mejorIndividuo = resultados.iat[0]
+
     for ind in grupo_mejores:
-        xb = mejorIndividuo
-        b = np.random.randint(0, lng_pob) # Indice aleatorio para seleccionar individuo al azar
-        xm = resultados.iat[b]              
-        xt = ind + np.cross(sn, np.subtract(xb, xm)) 
+
+        xb = np.array(mejorIndividuo)
+        b = np.random.randint(0, lng_pob)
+        xm = np.array(resultados.iat[b])
+        xt = ind + sn.dot(xb - xm)
 
         for i in range(lng_lim):
             if xt[i] < lim_inf[i]:
@@ -165,5 +173,3 @@ def competenciaG1(resultados, n1, sn, fobj, lim_inf, lim_sup):
     resultados.sort_index(inplace=True) 
     
     return resultados
-
-
