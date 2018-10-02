@@ -1,17 +1,20 @@
 from functools import reduce
 
-import numpy as np
-import pandas as pd
+
+from numpy import (cov, sqrt, mean, subtract, add, 
+                   diag, multiply, linalg, inf, random, array)
+
+from pandas import Series
 
 
 def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
 
     # Generacion de la poblacion inicial
-    poblacion = generarPoblacion(lmt_inferior,lmt_superior, n)
+    poblacion = generarPoblacion(lmt_inferior, lmt_superior, n)
 
 
     # Serie donde se guarda el mejor valor de fobj de cada generacion, para fines ilustrativos
-    best_fobj = pd.Series()
+    best_fobj = Series()
 
 
     # Lista donde se guardan todos los datos que seran regresados por la funcion
@@ -19,6 +22,8 @@ def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
 
 
     for i in range(ng):
+        global generacion_actual
+        generacion_actual = i
 
         print('Generacion numero: ', i + 1)
 
@@ -27,19 +32,19 @@ def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
 
 
         # Se agrega el mejor individuo de la generacion a best_fobj
-        best_fobj = best_fobj.append(pd.Series({i + 1 : resultados.index[-1]}))
+        best_fobj = best_fobj.append(Series({i + 1: resultados.index[-1]}))
 
 
         # Calculos estadisticos varios
-        s = np.cov(poblacion, rowvar=False)
-        sd = np.sqrt(np.diag(s))   
-        media = np.mean(poblacion, axis=0)           
+        s = cov(poblacion, rowvar=False)
+        sd = sqrt(diag(s))   
+        media = mean(poblacion, axis=0)           
                 
-        mini = np.subtract(media, np.multiply(0.5, sd) )
-        maxi = np.add(media, np.multiply(0.5, sd) )
+        mini = subtract(media, multiply(0.5, sd))
+        maxi = add(media, multiply(0.5, sd))
         
-        mini1 = np.subtract(media,  sd)
-        maxi1 = np.add(media,  sd)
+        mini1 = subtract(media, sd)
+        maxi1 = add(media, sd)
 
 
         # Calculo de las cardinalidades
@@ -47,7 +52,7 @@ def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
         poblacionRegion_2 = filtrarIndividuosRegion(poblacion, mini1, maxi1)
 
 
-        n1= sum(poblacionRegion_1)           
+        n1 = sum(poblacionRegion_1)           
         if n1 < 0:
             n1 = 0
 
@@ -57,13 +62,13 @@ def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
 
         n3 = n - n1 - n2
 
-        sn = np.multiply(s, 1/np.linalg.norm(s,np.inf))
+        sn = multiply(s, 1 / linalg.norm(s, inf))
 
 
         # Si hay individuos en n1, calcular diferencias y hacerlos competir
         if n1 > 0:
             resultados = competenciaG1(resultados, n1, sn, fObjetivo, lmt_inferior, lmt_superior)
-            grupo_mejores = resultados.iloc[-n1: ] 
+            grupo_mejores = resultados.iloc[-n1:] 
 
 
         # Poblacion de la siguiente generacion
@@ -73,12 +78,12 @@ def mago_max(lmt_inferior, lmt_superior, n, ng, fObjetivo):
             poblacion.extend(grupo_mejores)
         else:
             # En caso de que n1 sea 0, guarda el mejor individuo para la proxima generacion
-            # y resta 1 a n3 o n1 para mantener la poblacion en n individuos
+            # y resta 1 a n3 o n2 para mantener la poblacion en n individuos
             poblacion.append(resultados.iat[-1])
             if n3 != 0:
                 n3 -= 1
             else:
-                n2 -=1
+                n2 -= 1
 
         if n2 != 0:
             poblacion.extend(generarPoblacion(mini, maxi, n2))
@@ -101,7 +106,7 @@ def generarPoblacion(limite_inferior, limite_superior, n):
     encuentra entre el lmt_superior y lmt_inferior de la variable respectiva
     despues transpone y entrega un vector de tuplas donde cada 1 es un individuo
     """
-    pob = zip(*[np.random.uniform(limite_inferior[i] ,limite_superior[i] , n) for i in range(len(limite_inferior))])
+    pob = zip(*[random.uniform(limite_inferior[i], limite_superior[i], n) for i in range(len(limite_inferior))])
 
     return [ind for ind in pob]
 
@@ -116,25 +121,20 @@ def evaluarPoblacion(poblacion, fObjetivo):
     for i in poblacion:
         resultados[fObjetivo(i)] = i
 
-    resultados = pd.Series(resultados)
+    resultados = Series(resultados)
 
     return resultados
 
 
-def filtrarIndividuosRegion(resultados, limite_inferior, limite_superior):
+def filtrarIndividuosRegion(resultados, lim_inf, lim_sup):
     """
     Filtra los individuos segun limites inferiores y superiores y entrega una boolean mask
     """
         
-    variableCumple = lambda x,li,ls: x>=li and x<=ls
-    reducirCondicion = lambda x,y: x and y    
+    variableCumple = lambda x, li, ls: x>=li and x<=ls
+    reducirCondicion = lambda x, y: x and y    
 
-    individuosRegion=[]  
-
-    for ind in resultados:
-
-        val =  map(variableCumple,ind,limite_inferior, limite_superior) 
-        individuosRegion.append(reduce(reducirCondicion, val))
+    individuosRegion = [reduce(reducirCondicion, map(variableCumple, ind, lim_inf, lim_sup)) for ind in resultados]
 
     return individuosRegion
 
@@ -149,14 +149,14 @@ def competenciaG1(resultados, n1, sn, fobj, lim_inf, lim_sup):
     lng_pob = len(resultados)
     lng_lim = len(lim_inf)
 
-    grupo_mejores = resultados.iloc[-n1: ] 
+    grupo_mejores = resultados.iloc[-n1:] 
     mejorIndividuo = resultados.iat[-1]
    
     for ind in grupo_mejores:
 
-        xb = np.array(mejorIndividuo)
-        b = np.random.randint(0, lng_pob)
-        xm = np.array(resultados.iat[b])
+        xb = array(mejorIndividuo)
+        b = random.randint(0, lng_pob)
+        xm = array(resultados.iat[b])
         xt = ind + sn.dot(xb - xm)
 
         for i in range(lng_lim):
@@ -168,7 +168,7 @@ def competenciaG1(resultados, n1, sn, fobj, lim_inf, lim_sup):
         if fobj(xt) > fobj(ind):
 
             resultados = (resultados.drop([fobj(ind)])
-                                    .append(pd.Series({fobj(xt):xt})))
+                                    .append(Series({fobj(xt): xt})))
 
     resultados.sort_index(inplace=True)
     

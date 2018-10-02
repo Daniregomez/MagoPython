@@ -9,11 +9,11 @@ from mago_min import mago_min
 # Especificaciones del problema --------------------------------------------------
 # --------------------------------------------------------------------------------
 
-limite_inferior = [-10, -10, -10, -10, -30]
-limite_superior = [10, 10, 10, 10, 30]
-n = 50
+limite_inferior = [-10, -10, -10, -10, -30, -100]
+limite_superior = [10, 10, 10, 10, 30, 50]
+n = 1000
 ng = 200
-fObjetivo = lambda x: sum(x)
+fObjetivo = lambda x: abs(min(x)) + x[0] + x[1]
 
 # 0 Minimiza         1 Maximiza
 objetivo = 0
